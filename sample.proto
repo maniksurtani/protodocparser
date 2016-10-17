@@ -1,3 +1,5 @@
+package squareup.test.stuff;
+
            /**
  * @API(design=http://….)
  * A service that does Blah.

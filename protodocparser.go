@@ -11,9 +11,12 @@ import (
 
 // Regexps
 var startCommentRE = regexp.MustCompile("\\s*/\\*\\*")
-var endCommentRE = regexp.MustCompile("\\s*\\*\\\\\\s*$")
+var endCommentRE = regexp.MustCompile("\\s*\\*/\\s*$")
 var rpcRE = regexp.MustCompile("\\s*rpc\\s+")
 var serviceRE = regexp.MustCompile("\\s*service\\s+")
+var serviceNameRE = regexp.MustCompile("\\s*service\\s+([a-zA-Z0-9_]+)\\s*\\{")
+var rpcNameRE = regexp.MustCompile("\\s*rpc\\s+([a-zA-Z0-9_]+)\\s*\\(\\s*([a-zA-Z0-9_]+)\\s*\\)\\s+returns\\s+\\(\\s*([a-zA-Z0-9_]+)\\s*\\)")
+var pkgNameRE = regexp.MustCompile("\\s*package\\s+([a-zA-Z0-9_.]+)\\s*;")
 
 func main() {
 	// Read a proto file from StdIn
@@ -31,24 +34,76 @@ func readFromStdIn() []string {
 	return txt
 }
 
-func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string) {
-	// TODO
+func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) {
+	rpc := impl.NewRpc()
+	rpc.Name, rpc.Request, rpc.Response = rpcName(lines[currentLine])
+
+	// TODO add other sections of the rpc.
+	lastService := services[len(services) - 1]
+	lastService.Rpcs = append(lastService.Rpcs, rpc)
 }
 
-func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string) []*impl.Service {
-	// TODO
-	//return &impl.Service{}
-	return nil;
+func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) []*impl.Service {
+	s := impl.NewService()
+	s.Name = serviceName(lines[currentLine])
+
+	// TODO add other sections of the service.
+	return append(services, s)
+}
+
+func serviceName(line string) string {
+	r := serviceNameRE.FindStringSubmatch(line)
+	if len(r) > 0 {
+		return r[1]
+	} else {
+		return ""
+	}
+}
+
+func rpcName(line string) (name, req, rsp string) {
+	r := rpcNameRE.FindStringSubmatch(line)
+	lenR := len(r)
+	if lenR > 0 {
+		name = r[1]
+	}
+
+	if lenR > 1 {
+		req = r[2]
+	}
+
+	if lenR > 2 {
+		rsp = r[3]
+	}
+
+	return
+}
+
+func matchPkgName(line string) (string, bool) {
+	matches := pkgNameRE.FindStringSubmatch(line)
+	if len(matches) > 0 {
+		return matches[1], true
+	}
+
+	return "", false
 }
 
 func parse(lines []string) string {
-	fmt.Printf("Got %v lines of txt\n", len(lines))
+	//fmt.Printf("Got %v lines of txt\n", len(lines))
 	// Create an array of services.
 	services := make([]*impl.Service, 0)
 
 	var currentBlock *impl.CommentBlock
+	pkgName := ""
+	matched := false
 
 	for ln, line := range lines {
+		if pkgName == "" {
+			pkgName, matched = matchPkgName(line)
+			if matched {
+				continue
+			}
+		}
+		//fmt.Printf("Line %v is [%v]\n", ln, line)
 		if startCommentRE.MatchString(line) && currentBlock == nil {
 			// Create a new comment block.
 			currentBlock = &impl.CommentBlock{}
@@ -59,14 +114,19 @@ func parse(lines []string) string {
 		} else if rpcRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
 			// Mark block as an RPC type.
 			currentBlock.Type = impl.RpcComment
-			addRpcToLastService(services, currentBlock, lines)
+			addRpcToLastService(services, currentBlock, lines, ln)
 			currentBlock = nil
 		} else if serviceRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
 			// Mark block as a Service type.
 			currentBlock.Type = impl.ServiceComment
-			services = addServiceToServices(services, currentBlock, lines)
+			services = addServiceToServices(services, currentBlock, lines, ln)
 			currentBlock = nil
 		}
+	}
+
+	// Add package names to services.
+	for _, svc := range services {
+		svc.Package = pkgName
 	}
 
 	bytes, err := json.Marshal(services)

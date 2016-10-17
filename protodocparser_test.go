@@ -12,9 +12,9 @@ func TestStartComment(t *testing.T) {
 }
 
 func TestEndComment(t *testing.T) {
-	assertTrue(endCommentRE.MatchString("*\\"), t)
-	assertTrue(endCommentRE.MatchString("*\\    "), t)
-	assertFalse(endCommentRE.MatchString("*\\    s"), t)
+	assertTrue(endCommentRE.MatchString("*/"), t)
+	assertTrue(endCommentRE.MatchString("*/    "), t)
+	assertFalse(endCommentRE.MatchString("*/    s"), t)
 }
 
 func TestIsRpc(t *testing.T) {
@@ -28,9 +28,27 @@ func TestIsService(t *testing.T) {
 	assertFalse(serviceRE.MatchString("   serviceWithTypo MyService"), t)
 }
 
+func TestServiceNames(t *testing.T) {
+	if serviceName("service S{") != "S" {
+		t.Errorf("Expected 'S' but was %v", serviceName("service S{"))
+	}
+
+	if serviceName("service S {") != "S" {
+		t.Errorf("Expected 'S' but was %v", serviceName("service S {"))
+	}
+
+	if serviceName("    service    S_s   {") != "S_s" {
+		t.Errorf("Expected 'S_s' but was %v", serviceName("    service    S_s   {"))
+	}
+}
+
+func TestRpcNames(t *testing.T) {
+	// TODO
+}
+
 func assertTrue(expr bool, t *testing.T) {
 	if !expr {
-		t.Error("failure")
+		t.Error("failure. ")
 	}
 }
 
