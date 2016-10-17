@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"bufio"
 	"os"
+	"strings"
 )
 
 // Regexps
@@ -85,6 +86,10 @@ func matchPkgName(line string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func parseString(fileAsString string) string {
+	return parse(strings.Split(fileAsString, "\n"))
 }
 
 func parse(lines []string) string {

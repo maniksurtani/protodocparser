@@ -7,6 +7,7 @@ import (
 	"strings"
 	"fmt"
 	"regexp"
+	"io/ioutil"
 )
 
 func TestStartComment(t *testing.T) {
@@ -48,6 +49,14 @@ func TestServiceNames(t *testing.T) {
 	}
 }
 
+func TestParseSimpleProto(t *testing.T) {
+	protoString, _ := ioutil.ReadFile("./sample.proto")
+	outputJson := parseString(string(protoString))
+	assertEqualStrings(outputJson,
+		`[{"package":"squareup.test.stuff","name":"MyService","rpcs":[{"name":"MyEndpoint","request":"Request","response":"Response"}]}]`,
+		t)
+}
+
 func TestRpcNames(t *testing.T) {
 	// TODO
 }
@@ -63,6 +72,13 @@ func assertFalse(expr bool, t *testing.T) {
 	if expr {
 		printRelevantStacktrace()
 		t.Fail()
+	}
+}
+
+func assertEqualStrings(input string, expected string, t *testing.T) {
+	if strings.Compare(input, expected) != 0 {
+		printRelevantStacktrace()
+		t.Errorf("\nExpected: `%s`\n but got: `%s`", expected, input)
 	}
 }
 
