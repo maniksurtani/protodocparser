@@ -14,9 +14,9 @@ var startCommentRE = regexp.MustCompile("^\\s*/\\*")
 var endCommentRE = regexp.MustCompile("\\s*\\*/\\s*$")
 var rpcRE = regexp.MustCompile("\\s*rpc\\s+")
 var serviceRE = regexp.MustCompile("\\s*service\\s+")
-var serviceNameRE = regexp.MustCompile("\\s*service\\s+([a-zA-Z0-9_]+)\\s*\\{")
-var rpcNameRE = regexp.MustCompile("\\s*rpc\\s+([a-zA-Z0-9_]+)\\s*\\(\\s*([a-zA-Z0-9_]+)\\s*\\)\\s+returns\\s+\\(\\s*([a-zA-Z0-9_]+)\\s*\\)")
-var pkgNameRE = regexp.MustCompile("\\s*package\\s+([a-zA-Z0-9_.]+)\\s*;")
+var serviceNameRE = regexp.MustCompile("\\s*service\\s+(\\w+)\\s*\\{")
+var rpcNameRE = regexp.MustCompile("\\s*rpc\\s+(\\w+)\\s*\\(\\s*([\\w]+)\\s*\\)\\s+returns\\s+\\(\\s*(\\w+)\\s*\\)")
+var pkgNameRE = regexp.MustCompile("\\s*package\\s+([\\w.]+)\\s*;")
 
 func main() {
 	// Read a proto file from StdIn
