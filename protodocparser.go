@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/maniksurtani/protodocparser/impl"
 	"encoding/json"
+	"io/ioutil"
+	"strings"
 )
 
 func main() {
@@ -14,8 +16,10 @@ func main() {
 }
 
 func readFromStdIn() []string {
-	// TODO actually read from StdIn, and split on newlines
-	return []string{"a", "b", "c"}
+	//todo read from stdin and convert this into a proper test
+	dat, err := ioutil.ReadFile("./sample.proto")
+	check(err)
+	return strings.Split(string(dat), "\n")
 }
 
 func parse(lines []string) []byte {
@@ -27,4 +31,10 @@ func parse(lines []string) []byte {
 		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
 	}
 	return bytes
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
 }

@@ -1,0 +1,17 @@
+/**
+ * @API(design=http://….)
+ * A service that does Blah.
+ * @Example(language=go)
+ * conn := createRpcConnection()
+ * client := myservice.NewMyServiceClient(conn)
+ * response, err := client.MyEndpoint(&Request{})
+ * @Example(language=java)
+ * … etc …
+ */
+service MyService {
+  /**
+  * @Example(language=go)
+  * ….
+  */
+  rpc MyEndpoint(Request) returns (Response)
+}
