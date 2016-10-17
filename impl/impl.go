@@ -1,5 +1,13 @@
 package impl
 
+type CommentType int
+
+const (
+	ServiceComment CommentType = iota
+	RpcComment
+	OtherComment
+)
+
 type Example struct {
 	Language string
 	Code string
@@ -24,4 +32,10 @@ type Service struct {
 	Doc string
 	Examples []*Example
 	Rpcs []*Rpc
+}
+
+type CommentBlock struct {
+	Start int
+	End int
+	Type CommentType
 }
