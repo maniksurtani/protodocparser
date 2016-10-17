@@ -10,7 +10,7 @@ import (
 )
 
 // Regexps
-var startCommentRE = regexp.MustCompile("\\s*/\\*\\*")
+var startCommentRE = regexp.MustCompile("^\\s*/\\*")
 var endCommentRE = regexp.MustCompile("\\s*\\*/\\s*$")
 var rpcRE = regexp.MustCompile("\\s*rpc\\s+")
 var serviceRE = regexp.MustCompile("\\s*service\\s+")

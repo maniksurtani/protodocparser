@@ -2,13 +2,19 @@ package main
 
 import (
 	"testing"
+	"runtime/debug"
+	//"os"
+	"strings"
+	"fmt"
+	"regexp"
 )
 
 func TestStartComment(t *testing.T) {
 	assertTrue(startCommentRE.MatchString("/**"), t)
 	assertTrue(startCommentRE.MatchString("          /**"), t)
-	assertFalse(startCommentRE.MatchString("/*"), t)
+	assertTrue(startCommentRE.MatchString("/*"), t)
 	assertFalse(startCommentRE.MatchString("//"), t)
+	assertFalse(startCommentRE.MatchString("this is not a comment /**"), t)
 }
 
 func TestEndComment(t *testing.T) {
@@ -48,12 +54,31 @@ func TestRpcNames(t *testing.T) {
 
 func assertTrue(expr bool, t *testing.T) {
 	if !expr {
-		t.Error("failure. ")
+		printRelevantStacktrace()
+		t.Fail()
 	}
 }
 
 func assertFalse(expr bool, t *testing.T) {
 	if expr {
-		t.Error("failure")
+		printRelevantStacktrace()
+		t.Fail()
+	}
+}
+
+/*
+	Finds the line of the test that failed, and prints it.
+ */
+func printRelevantStacktrace() {
+	stackTraces := strings.Split(string(debug.Stack()[:]), "\n")
+	testinRunnerStackIndex := -1
+	for index, stackTraceLine := range stackTraces {
+		matches, _ := regexp.MatchString("^testing.tRunner", stackTraceLine)
+		if matches {
+			testinRunnerStackIndex = index - 1
+		}
+	}
+	if testinRunnerStackIndex >= 0 {
+		fmt.Printf("The test failed at:\n  %s\n", stackTraces[testinRunnerStackIndex ])
 	}
 }
