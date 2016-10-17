@@ -9,6 +9,12 @@ import (
 	"os"
 )
 
+// Regexps
+var startCommentRE = regexp.MustCompile("\\s*/\\*\\*")
+var endCommentRE = regexp.MustCompile("\\s*\\*\\\\\\s*$")
+var rpcRE = regexp.MustCompile("\\s*rpc\\s+")
+var serviceRE = regexp.MustCompile("\\s*service\\s+")
+
 func main() {
 	// Read a proto file from StdIn
 	protoContents := readFromStdIn()
@@ -23,22 +29,6 @@ func readFromStdIn() []string {
 		txt = append(txt, s.Text())
 	}
 	return txt
-}
-
-func isStartComment(line string) bool {
-	return checkRegex("\\s*/\\*\\*", line)
-}
-
-func isEndComment(line string) bool {
-	return checkRegex("\\s*\\*\\\\\\s*$", line)
-}
-
-func isRpc(line string) bool {
-	return checkRegex("\\s*RPC\\s+", line)
-}
-
-func isService(line string) bool {
-	return checkRegex("\\s*Service\\s+", line)
 }
 
 func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string) {
@@ -59,19 +49,19 @@ func parse(lines []string) string {
 	var currentBlock *impl.CommentBlock
 
 	for ln, line := range lines {
-		if isStartComment(line) && currentBlock == nil {
+		if startCommentRE.MatchString(line) && currentBlock == nil {
 			// Create a new comment block.
 			currentBlock = &impl.CommentBlock{}
 			currentBlock.Start = ln
 			currentBlock.Type = impl.OtherComment
-		} else if isEndComment(line) && currentBlock != nil {
+		} else if endCommentRE.MatchString(line) && currentBlock != nil {
 			currentBlock.End = ln
-		} else if isRpc(line) && currentBlock != nil && currentBlock.End > 0 {
+		} else if rpcRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
 			// Mark block as an RPC type.
 			currentBlock.Type = impl.RpcComment
 			addRpcToLastService(services, currentBlock, lines)
 			currentBlock = nil
-		} else if isService(line) && currentBlock != nil && currentBlock.End > 0 {
+		} else if serviceRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
 			// Mark block as a Service type.
 			currentBlock.Type = impl.ServiceComment
 			services = addServiceToServices(services, currentBlock, lines)
@@ -84,12 +74,4 @@ func parse(lines []string) string {
 		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
 	}
 	return string(bytes)
-}
-
-func checkRegex(regex string, s string) bool {
-	out, err := regexp.MatchString(regex, s)
-	if err != nil {
-		return false
-	}
-	return out
 }
