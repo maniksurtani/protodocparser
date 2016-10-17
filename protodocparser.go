@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/maniksurtani/protodocparser/impl"
 	"encoding/json"
-	"io/ioutil"
-	"strings"
 	"regexp"
+	"bufio"
+	"os"
 )
 
 func main() {
@@ -17,10 +17,12 @@ func main() {
 }
 
 func readFromStdIn() []string {
-	//todo read from stdin and convert this into a proper test
-	dat, err := ioutil.ReadFile("./sample.proto")
-	check(err)
-	return strings.Split(string(dat), "\n")
+	s := bufio.NewScanner(os.Stdin)
+	txt := make([]string, 0)
+	for s.Scan() {
+		txt = append(txt, s.Text())
+	}
+	return txt
 }
 
 func isStartComment(line string) bool {
@@ -82,12 +84,6 @@ func parse(lines []string) string {
 		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
 	}
 	return string(bytes)
-}
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
 }
 
 func checkRegex(regex string, s string) bool {
