@@ -22,7 +22,7 @@ func readFromStdIn() []string {
 	return strings.Split(string(dat), "\n")
 }
 
-func parse(lines []string) []byte {
+func parse(lines []string) string {
 	// Create an array of services.
 	services := make([]*impl.Service, 0)
 	// TODO parse lines, only read comments, add to services array.
@@ -30,7 +30,7 @@ func parse(lines []string) []byte {
 	if err != nil {
 		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
 	}
-	return bytes
+	return string(bytes)
 }
 
 func check(e error) {
