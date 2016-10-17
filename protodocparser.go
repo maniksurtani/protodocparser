@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strings"
+	"regexp"
 )
 
 func main() {
@@ -23,23 +24,19 @@ func readFromStdIn() []string {
 }
 
 func isStartComment(line string) bool {
-	// TODO
-	return true
+	return checkRegex("\\s*/\\*\\*", line)
 }
 
 func isEndComment(line string) bool {
-	// TODO
-	return true
+	return checkRegex("\\s*\\*\\\\\\s*$", line)
 }
 
 func isRpc(line string) bool {
-	// TODO
-	return true
+	return checkRegex("\\s*RPC\\s+", line)
 }
 
 func isService(line string) bool {
-	// TODO
-	return true
+	return checkRegex("\\s*Service\\s+", line)
 }
 
 func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string) {
@@ -48,7 +45,8 @@ func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlo
 
 func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string) []*impl.Service {
 	// TODO
-	return &impl.Service{}
+	//return &impl.Service{}
+	return nil;
 }
 
 func parse(lines []string) string {
@@ -90,4 +88,12 @@ func check(e error) {
 	if e != nil {
 		panic(e)
 	}
+}
+
+func checkRegex(regex string, s string) bool {
+	out, err := regexp.MatchString(regex, s)
+	if err != nil {
+		return false
+	}
+	return out
 }
