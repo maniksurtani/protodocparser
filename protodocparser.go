@@ -1,12 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/maniksurtani/protodocparser/impl"
+	"encoding/json"
+)
 
 func main() {
 	// Read a proto file from StdIn
 	protoContents := readFromStdIn()
 	j := parse(protoContents)
-	printToStdOut(j)
+	fmt.Println(j)
 }
 
 func readFromStdIn() []string {
@@ -14,11 +18,13 @@ func readFromStdIn() []string {
 	return []string{"a", "b", "c"}
 }
 
-func parse(lines []string) string {
-	// TODO parse lines, only read comments, return serialized JSON
-	return "[{}]"
-}
-
-func printToStdOut(j string) {
-	fmt.Print("TODO: print JSON\n\n")
+func parse(lines []string) []byte {
+	// Create an array of services.
+	services := make([]*impl.Service, 0)
+	// TODO parse lines, only read comments, add to services array.
+	bytes, err := json.Marshal(services)
+	if err != nil {
+		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
+	}
+	return bytes
 }
