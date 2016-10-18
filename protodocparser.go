@@ -8,18 +8,34 @@ import (
 	"bufio"
 	"os"
 	"strings"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 // Regexps
-var startCommentRE = regexp.MustCompile("^\\s*/\\*")
-var endCommentRE = regexp.MustCompile("\\s*\\*/\\s*$")
-var rpcRE = regexp.MustCompile("\\s*rpc\\s+")
-var serviceRE = regexp.MustCompile("\\s*service\\s+")
-var serviceNameRE = regexp.MustCompile("\\s*service\\s+(\\w+)\\s*\\{")
-var rpcNameRE = regexp.MustCompile("\\s*rpc\\s+(\\w+)\\s*\\(\\s*([\\w]+)\\s*\\)\\s+returns\\s+\\(\\s*(\\w+)\\s*\\)")
-var pkgNameRE = regexp.MustCompile("\\s*package\\s+([\\w.]+)\\s*;")
+var (
+	startCommentRE = regexp.MustCompile("^\\s*/\\*")
+	endCommentRE = regexp.MustCompile("\\s*\\*/\\s*$")
+	rpcRE = regexp.MustCompile("\\s*rpc\\s+")
+	serviceRE = regexp.MustCompile("\\s*service\\s+")
+	serviceNameRE = regexp.MustCompile("\\s*service\\s+(\\w+)\\s*\\{")
+	rpcNameRE = regexp.MustCompile("\\s*rpc\\s+(\\w+)\\s*\\(\\s*([\\w]+)\\s*\\)\\s+returns\\s+\\(\\s*(\\w+)\\s*\\)")
+	pkgNameRE = regexp.MustCompile("\\s*package\\s+([\\w.]+)\\s*;")
+)
+
+// Command-line args
+var (
+	debug = kingpin.Flag("verbose", "Enable verbose mode").Bool()
+	// TODO should we allow multiple proto files? Separated by ':' or something?
+	protoFile = kingpin.Arg("protofile", "Proto file").Required().String()
+	outFile = kingpin.Arg("out", "Output file").Required().String()
+)
 
 func main() {
+	// TODO: parse command line parameters. Do do so, use the kingpin package. See https://github.com/alecthomas/kingpin#examples
+	kingpin.Version("0.1") // Version of protodocparser
+	kingpin.Parse() // Parse command-line options
+
+
 	// Read a proto file from StdIn
 	protoContents := readFromStdIn()
 	j := parse(protoContents)
