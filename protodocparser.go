@@ -20,6 +20,7 @@ var (
 	serviceNameRE = regexp.MustCompile("\\s*service\\s+(\\w+)\\s*\\{")
 	rpcNameRE = regexp.MustCompile("\\s*rpc\\s+(\\w+)\\s*\\(\\s*([\\w]+)\\s*\\)\\s+returns\\s+\\(\\s*(\\w+)\\s*\\)")
 	pkgNameRE = regexp.MustCompile("\\s*package\\s+([\\w.]+)\\s*;")
+	apiAnnotationRE = regexp.MustCompile("^\\s*\\*\\s*@API")
 )
 
 // Command-line args
@@ -38,7 +39,7 @@ func main() {
 
 	// Read a proto file from StdIn
 	protoContents := readFromStdIn()
-	j := parse(protoContents)
+	j := parseAsString(protoContents)
 	fmt.Println(j)
 }
 
@@ -64,9 +65,12 @@ func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlo
 	lastService.Rpcs = append(lastService.Rpcs, rpc)
 }
 
-func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) []*impl.Service {
+func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, apiAnnotation string, currentLine int) []*impl.Service {
 	s := impl.NewService()
 	s.Name = serviceName(lines[currentLine])
+	if len(apiAnnotation) > 0 {
+		s.Api = true
+	}
 
 	// TODO: set Api, Design, Doc, Examples, File, Org and Url
 	// TODO: to set Api, just check whether the @API annotation exists in the comment block
@@ -115,11 +119,20 @@ func matchPkgName(line string) (string, bool) {
 	return "", false
 }
 
-func parseString(fileAsString string) string {
+func parseString(fileAsString string) []*impl.Service {
 	return parse(strings.Split(fileAsString, "\n"))
 }
 
-func parse(lines []string) string {
+func parseAsString(lines []string) string {
+	services := parse(lines)
+	bytes, err := json.Marshal(services)
+	if err != nil {
+		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
+	}
+	return string(bytes)
+}
+
+func parse(lines []string) []*impl.Service {
 	//fmt.Printf("Got %v lines of txt\n", len(lines))
 	// Create an array of services.
 	services := make([]*impl.Service, 0)
@@ -127,6 +140,7 @@ func parse(lines []string) string {
 	var currentBlock *impl.CommentBlock
 	pkgName := ""
 	matched := false
+	apiAnnotation := ""
 
 	for ln, line := range lines {
 		if pkgName == "" {
@@ -151,8 +165,20 @@ func parse(lines []string) string {
 		} else if serviceRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
 			// Mark block as a Service type.
 			currentBlock.Type = impl.ServiceComment
-			services = addServiceToServices(services, currentBlock, lines, ln)
+			services = addServiceToServices(services, currentBlock, lines, apiAnnotation, ln)
 			currentBlock = nil
+			apiAnnotation = ""
+		} else if apiAnnotationRE.MatchString(line) && currentBlock != nil {
+			apiAnnotation = line
+		} else {
+			// Todo : remove this entire block
+			//fmt.Printf("What?: %s\n", line)
+			//fmt.Printf(">>>> apiAnnotationRE.MatchString(line): %v\n\n", apiAnnotationRE.MatchString(line))
+			//fmt.Printf(">>>> currentBlock: %s\n\n", currentBlock)
+			//if currentBlock != nil {
+			//	fmt.Printf(">>>> currentBlock.End: %v\n\n", currentBlock.End)
+			//}
+			//fmt.Printf(">>>> len(services): %d\n\n", len(services))
 		}
 	}
 
@@ -161,9 +187,5 @@ func parse(lines []string) string {
 		svc.Package = pkgName
 	}
 
-	bytes, err := json.Marshal(services)
-	if err != nil {
-		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
-	}
-	return string(bytes)
+	return services
 }
