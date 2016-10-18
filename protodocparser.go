@@ -38,8 +38,11 @@ func main() {
 
 
 	// Read a proto file from StdIn
+	// TODO read from input file(s) rather than StdIn
 	protoContents := readFromStdIn()
 	j := parseAsString(protoContents)
+
+	// TODO write to output file instead of StdOut
 	fmt.Println(j)
 }
 
