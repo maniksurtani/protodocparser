@@ -2,12 +2,14 @@ package main
 
 import (
 	"testing"
-	"runtime/debug"
+	d "runtime/debug"
 	//"os"
 	"strings"
 	"fmt"
 	"regexp"
 	"io/ioutil"
+	"github.com/maniksurtani/protodocparser/impl"
+	"reflect"
 )
 
 func TestStartComment(t *testing.T) {
@@ -35,6 +37,16 @@ func TestIsService(t *testing.T) {
 	assertFalse(serviceRE.MatchString("   serviceWithTypo MyService"), t)
 }
 
+
+func TestApiAnnotation(t *testing.T) {
+	assertTrue(apiAnnotationRE.MatchString("* @API()"), t)
+	assertTrue(apiAnnotationRE.MatchString(` * @API(design="http://link.to.design.com/design.html", org="payments")`), t)
+	assertTrue(apiAnnotationRE.MatchString("* @API"), t)
+	assertFalse(apiAnnotationRE.MatchString("* @Api()"), t)
+	assertFalse(apiAnnotationRE.MatchString("* @api()"), t)
+	assertFalse(apiAnnotationRE.MatchString("* api"), t)
+}
+
 func TestServiceNames(t *testing.T) {
 	if serviceName("service S{") != "S" {
 		t.Errorf("Expected 'S' but was %v", serviceName("service S{"))
@@ -51,10 +63,23 @@ func TestServiceNames(t *testing.T) {
 
 func TestParseSimpleProto(t *testing.T) {
 	protoString, _ := ioutil.ReadFile("./sample.proto")
-	outputJson := parseString(string(protoString))
-	assertEqualStrings(outputJson,
-		`[{"package":"squareup.test.stuff","name":"MyService","rpcs":[{"name":"MyEndpoint","request":"Request","response":"Response"}]}]`,
-		t)
+	output := parseString(string(protoString))
+
+	expectedServices := make([]*impl.Service, 0)
+	s := impl.NewService()
+	s.Package = "squareup.test.stuff"
+	s.Name = "MyService"
+	s.Api = true
+	rpc := impl.NewRpc()
+	rpc.Name = "MyEndpoint"
+	rpc.Request = "Request"
+	rpc.Response = "Response"
+	s.Rpcs = append(s.Rpcs, rpc)
+	expectedServices = append(expectedServices, s)
+
+	if !reflect.DeepEqual(output, expectedServices) {
+		t.Errorf("Not the same: \n%+V\n%+V\n", output, expectedServices)
+	}
 }
 
 func TestRpcNames(t *testing.T) {
@@ -76,7 +101,7 @@ func assertFalse(expr bool, t *testing.T) {
 }
 
 func assertEqualStrings(input string, expected string, t *testing.T) {
-	if strings.Compare(input, expected) != 0 {
+	if input != expected {
 		printRelevantStacktrace()
 		t.Errorf("\nExpected: `%s`\n but got: `%s`", expected, input)
 	}
@@ -86,7 +111,7 @@ func assertEqualStrings(input string, expected string, t *testing.T) {
 	Finds the line of the test that failed, and prints it.
  */
 func printRelevantStacktrace() {
-	stackTraces := strings.Split(string(debug.Stack()[:]), "\n")
+	stackTraces := strings.Split(string(d.Stack()[:]), "\n")
 	testinRunnerStackIndex := -1
 	for index, stackTraceLine := range stackTraces {
 		matches, _ := regexp.MatchString("^testing.tRunner", stackTraceLine)
