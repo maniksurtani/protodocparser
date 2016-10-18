@@ -39,7 +39,11 @@ func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlo
 	rpc := impl.NewRpc()
 	rpc.Name, rpc.Request, rpc.Response = rpcName(lines[currentLine])
 
-	// TODO add other sections of the rpc.
+	// TODO: set Options, Doc and Examples
+	// TODO: Doc is the comment block before the first @Example annotation
+	// TODO: @Examples exists in the comment block
+	// TODO: Options are the protobuf options. This might be harder to figure out since they may be split across multiple lines. :/
+
 	lastService := services[len(services) - 1]
 	lastService.Rpcs = append(lastService.Rpcs, rpc)
 }
@@ -48,7 +52,14 @@ func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBl
 	s := impl.NewService()
 	s.Name = serviceName(lines[currentLine])
 
-	// TODO add other sections of the service.
+	// TODO: set Api, Design, Doc, Examples, File, Org and Url
+	// TODO: to set Api, just check whether the @API annotation exists in the comment block
+	// TODO: to set Design and Org, look at the params passed in to @API
+	// TODO: if Org isn't set, attempt to "guess" what it might be by looking at the path/package of the proto, and look up in Registry
+	// TODO: @Examples exists in the comment block
+	// TODO: Get File and Url - TODO, have these passed in as command-line params
+	// TODO: Doc is the comment block after @API and before the first @Example annotation
+
 	return append(services, s)
 }
 

@@ -1,19 +1,24 @@
 package squareup.test.stuff;
 
-           /**
- * @API(design=http://….)
- * A service that does Blah.
+/**
+ * @API(design="http://link.to.design.com/design.html", org="payments")
+ * A service that does Blah. This is some documentation about this service. This service does some
+ * stuff.
+ *
  * @Example(language=go)
  * conn := createRpcConnection()
  * client := myservice.NewMyServiceClient(conn)
  * response, err := client.MyEndpoint(&Request{})
  * @Example(language=java)
- * … etc …
+ * String s = new String("Blah");
+ *
  */
 service MyService {
   /**
-  * @Example(language=go)
-  * ….
-  */
-  rpc MyEndpoint(Request) returns (Response)
+   * This method does some stuff, taking in a request and returning a response.
+   *
+   * @Example(language="java")
+   * Future<Response> rsp = MyServiceClient.myEndpoint(Request.defaultInstance());
+   */
+  rpc MyEndpoint(Request) returns (Response);
 }
