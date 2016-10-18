@@ -5,10 +5,9 @@ import (
 	"github.com/maniksurtani/protodocparser/impl"
 	"encoding/json"
 	"regexp"
-	"bufio"
-	"os"
 	"strings"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"io"
+	"io/ioutil"
 )
 
 // Regexps
@@ -23,36 +22,24 @@ var (
 	apiAnnotationRE = regexp.MustCompile("^\\s*\\*\\s*@API")
 )
 
-// Command-line args
-var (
-	debug = kingpin.Flag("verbose", "Enable verbose mode").Bool()
-	// TODO should we allow multiple proto files? Separated by ':' or something?
-	protoFile = kingpin.Arg("protofile", "Proto file").Required().String()
-	outFile = kingpin.Arg("out", "Output file").Required().String()
-)
+type ProtoFile struct {
+	// Can be used to access the contents of the proto
+	ProtoFileSource io.Reader
 
-func main() {
-	// TODO: parse command line parameters. Do do so, use the kingpin package. See https://github.com/alecthomas/kingpin#examples
-	kingpin.Version("0.1") // Version of protodocparser
-	kingpin.Parse() // Parse command-line options
-
-
-	// Read a proto file from StdIn
-	// TODO read from input file(s) rather than StdIn
-	protoContents := readFromStdIn()
-	j := parseAsString(protoContents)
-
-	// TODO write to output file instead of StdOut
-	fmt.Println(j)
+	// Metadata, purely for display in the output JSON
+	ProtoFilePath string
+	Url string
+	Sha string
 }
 
-func readFromStdIn() []string {
-	s := bufio.NewScanner(os.Stdin)
-	txt := make([]string, 0)
-	for s.Scan() {
-		txt = append(txt, s.Text())
+// ParseAsString parses proto manifests and returns a JSON string. Used externally also.
+func ParseAsString(protoFiles []*ProtoFile) string {
+	services := parse(protoFiles)
+	bytes, err := json.Marshal(services)
+	if err != nil {
+		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
 	}
-	return txt
+	return string(bytes)
 }
 
 func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) {
@@ -122,24 +109,24 @@ func matchPkgName(line string) (string, bool) {
 	return "", false
 }
 
-func parseString(fileAsString string) []*impl.Service {
-	return parse(strings.Split(fileAsString, "\n"))
-}
-
-func parseAsString(lines []string) string {
-	services := parse(lines)
-	bytes, err := json.Marshal(services)
-	if err != nil {
-		panic(fmt.Sprintf("Caught error %v trying to serialize %v into JSON.", err, services))
-	}
-	return string(bytes)
-}
-
-func parse(lines []string) []*impl.Service {
-	//fmt.Printf("Got %v lines of txt\n", len(lines))
-	// Create an array of services.
+// Can test from here rather than ParseAsString, since it makes testing easier
+func parse(protoFiles []*ProtoFile) []*impl.Service {
 	services := make([]*impl.Service, 0)
 
+	for _, p := range protoFiles {
+		contents, err := ioutil.ReadAll(p.ProtoFileSource)
+		if err != nil {
+			// TODO do something
+			panic(err)
+		}
+
+		parseLines(strings.Split(string(contents), "\n"), p, services)
+	}
+
+	return services
+}
+
+func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) {
 	var currentBlock *impl.CommentBlock
 	pkgName := ""
 	matched := false
@@ -189,6 +176,4 @@ func parse(lines []string) []*impl.Service {
 	for _, svc := range services {
 		svc.Package = pkgName
 	}
-
-	return services
 }

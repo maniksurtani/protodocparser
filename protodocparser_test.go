@@ -7,9 +7,9 @@ import (
 	"strings"
 	"fmt"
 	"regexp"
-	"io/ioutil"
 	"github.com/maniksurtani/protodocparser/impl"
 	"reflect"
+	"os"
 )
 
 func TestStartComment(t *testing.T) {
@@ -62,8 +62,15 @@ func TestServiceNames(t *testing.T) {
 }
 
 func TestParseSimpleProto(t *testing.T) {
-	protoString, _ := ioutil.ReadFile("./sample.proto")
-	output := parseString(string(protoString))
+	protoFile, _ := os.Open("./sample.proto")
+
+	pf := &ProtoFile{
+		ProtoFileSource: protoFile,
+		ProtoFilePath: "./sample.proto",
+		Url: "http://some.repo/sample.proto",
+		Sha: "ABCD1234"}
+
+	output := parse([]*ProtoFile{pf})
 
 	expectedServices := make([]*impl.Service, 0)
 	s := impl.NewService()
