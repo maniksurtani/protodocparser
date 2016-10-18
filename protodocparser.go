@@ -120,13 +120,13 @@ func parse(protoFiles []*ProtoFile) []*impl.Service {
 			panic(err)
 		}
 
-		parseLines(strings.Split(string(contents), "\n"), p, services)
+		services = parseLines(strings.Split(string(contents), "\n"), p, services)
 	}
 
 	return services
 }
 
-func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) {
+func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) []*impl.Service {
 	var currentBlock *impl.CommentBlock
 	pkgName := ""
 	matched := false
@@ -176,4 +176,6 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 	for _, svc := range services {
 		svc.Package = pkgName
 	}
+
+	return services
 }
