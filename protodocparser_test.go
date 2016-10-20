@@ -1,16 +1,29 @@
 package main
 
 import (
+	"runtime/debug"
 	"testing"
-	d "runtime/debug"
 	//"os"
-	"strings"
+	"encoding/json"
 	"fmt"
-	"regexp"
 	"github.com/maniksurtani/protodocparser/impl"
-	"reflect"
 	"os"
+	"reflect"
+	"regexp"
+	"strings"
 )
+
+func TestExtractAnnotation(t *testing.T) {
+	assertEqualStrings(extractAnnotationContent("@API(   content here  )"), "content here", t)
+	assertPanic(t, func() { extractAnnotationContent("no content here. it will panic") })
+}
+
+func TestExtractLanguageFromExample(t *testing.T) {
+	assertEqualStrings(extractLanguageFromExample("@Example(language=\"java\")"), "java", t)
+	assertEqualStrings(extractLanguageFromExample("@Example(language=\"go\")"), "go", t)
+	assertEqualStrings(extractLanguageFromExample("@Example(language   =   java)"), "java", t)
+	assertPanic(t, func() { extractLanguageFromExample("@Example(badparam=java)") })
+}
 
 func TestStartComment(t *testing.T) {
 	assertTrue(startCommentRE.MatchString("/**"), t)
@@ -37,7 +50,6 @@ func TestIsService(t *testing.T) {
 	assertFalse(serviceRE.MatchString("   serviceWithTypo MyService"), t)
 }
 
-
 func TestApiAnnotation(t *testing.T) {
 	assertTrue(apiAnnotationRE.MatchString("* @API()"), t)
 	assertTrue(apiAnnotationRE.MatchString(` * @API(design="http://link.to.design.com/design.html", org="payments")`), t)
@@ -45,6 +57,17 @@ func TestApiAnnotation(t *testing.T) {
 	assertFalse(apiAnnotationRE.MatchString("* @Api()"), t)
 	assertFalse(apiAnnotationRE.MatchString("* @api()"), t)
 	assertFalse(apiAnnotationRE.MatchString("* api"), t)
+}
+
+func TestExampleAnnoations(t *testing.T) {
+	assertTrue(exampleAnnoationRE.MatchString("* @Example()"), t)
+	assertTrue(exampleAnnoationRE.MatchString(` * @Example(language="java")`), t)
+	assertTrue(exampleAnnoationRE.MatchString("* @Example"), t)
+	assertFalse(exampleAnnoationRE.MatchString("* @example()"), t)
+}
+
+func TestParseKeyValues(t *testing.T) {
+	assertTrue(exampleAnnoationRE.MatchString("* @Example()"), t)
 }
 
 func TestServiceNames(t *testing.T) {
@@ -66,9 +89,9 @@ func TestParseSimpleProto(t *testing.T) {
 
 	pf := &ProtoFile{
 		ProtoFileSource: protoFile,
-		ProtoFilePath: "./sample.proto",
-		Url: "http://some.repo/sample.proto",
-		Sha: "ABCD1234"}
+		ProtoFilePath:   "./sample.proto",
+		Url:             "http://some.repo/sample.proto",
+		Sha:             "ABCD1234"}
 
 	output := parse([]*ProtoFile{pf})
 
@@ -81,12 +104,23 @@ func TestParseSimpleProto(t *testing.T) {
 	rpc.Name = "MyEndpoint"
 	rpc.Request = "Request"
 	rpc.Response = "Response"
+	gocode := "conn := createRpcConnection()\nresponse, err := conn.MyEndpoint(&Request{})"
+	s.Examples = append(s.Examples,
+		&impl.Example{Language: "java", Code: `String s = new String("Blah");`},
+		&impl.Example{Language: "go", Code: gocode},
+	)
 	s.Rpcs = append(s.Rpcs, rpc)
 	expectedServices = append(expectedServices, s)
 
 	if !reflect.DeepEqual(output, expectedServices) {
-		t.Errorf("Not the same: \n%+V\n%+V\n", output, expectedServices)
+		t.Errorf("Not the same: \n%+s\n%+s\n", asJson(output), asJson(expectedServices))
 	}
+}
+
+func asJson(v interface{}) string {
+	//out, _ := json.MarshalIndent(v, "", "  ")
+	out, _ := json.Marshal(v)
+	return string(out)
 }
 
 func TestRpcNames(t *testing.T) {
@@ -114,11 +148,20 @@ func assertEqualStrings(input string, expected string, t *testing.T) {
 	}
 }
 
+func assertPanic(t *testing.T, f func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("The code did not panic")
+		}
+	}()
+	f()
+}
+
 /*
 	Finds the line of the test that failed, and prints it.
- */
+*/
 func printRelevantStacktrace() {
-	stackTraces := strings.Split(string(d.Stack()[:]), "\n")
+	stackTraces := strings.Split(string(debug.Stack()[:]), "\n")
 	testinRunnerStackIndex := -1
 	for index, stackTraceLine := range stackTraces {
 		matches, _ := regexp.MatchString("^testing.tRunner", stackTraceLine)
@@ -127,6 +170,6 @@ func printRelevantStacktrace() {
 		}
 	}
 	if testinRunnerStackIndex >= 0 {
-		fmt.Printf("The test failed at:\n  %s\n", stackTraces[testinRunnerStackIndex ])
+		fmt.Printf("The test failed at:\n  %s\n", stackTraces[testinRunnerStackIndex])
 	}
 }
