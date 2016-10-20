@@ -5,12 +5,11 @@ package squareup.test.stuff;
  * A service that does Blah. This is some documentation about this service. This service does some
  * stuff.
  *
- * @Example(language=go)
- * conn := createRpcConnection()
- * client := myservice.NewMyServiceClient(conn)
- * response, err := client.MyEndpoint(&Request{})
- * @Example(language=java)
+ * @Example(language="java")
  * String s = new String("Blah");
+ * @Example(language="go")
+ * conn := createRpcConnection()
+ * response, err := conn.MyEndpoint(&Request{})
  *
  */
 service MyService {
