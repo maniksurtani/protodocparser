@@ -95,15 +95,19 @@ func (p *ParsingContext) reset() {
 	p.apiAnnotation = ""
 	p.designDoc = ""
 	p.org = ""
+	p.examples = make([]*impl.Example, 0)
 }
 
-func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) {
+func addRpcToLastService(services []*impl.Service, p *ParsingContext, lines []string, currentLine int) {
 	rpc := impl.NewRpc()
 	rpc.Name, rpc.Request, rpc.Response = rpcName(lines[currentLine])
+	currentExample := p.closeCurrentExample()
+	if currentExample != nil {
+		rpc.Examples = p.examples
+	}
 
 	// TODO: set Options, Doc and Examples
 	// TODO: Doc is the comment block before the first @Example annotation
-	// TODO: @Examples exists in the comment block
 	// TODO: Options are the protobuf options. This might be harder to figure out since they may be split across multiple lines. :/
 
 	lastService := services[len(services)-1]
@@ -117,6 +121,10 @@ func addServiceToServices(services []*impl.Service, p *ParsingContext, lines []s
 		s.Api = true
 		s.Design = p.designDoc
 		s.Org = p.org
+	}
+	currentExample := p.closeCurrentExample()
+	if currentExample != nil {
+		s.Examples = p.examples
 	}
 
 	// TODO: set Doc, File, and Url
@@ -229,20 +237,13 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 		} else if rpcRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
 			// Mark block as an RPC type.
 			p.currentBlock.Type = impl.RpcComment
-			addRpcToLastService(services, p.currentBlock, lines, ln)
-			p.currentBlock = nil
+			addRpcToLastService(services, p, lines, ln)
+			p.reset()
 		} else if serviceRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
 			// Mark block as a Service type.
 			p.currentBlock.Type = impl.ServiceComment
 			services = addServiceToServices(services, p, lines, ln)
 			p.reset()
-			currentExample := p.closeCurrentExample()
-			if currentExample != nil {
-				lastService := services[len(services)-1]
-				lastService.Examples = p.examples
-				p.examples = make([]*impl.Example, 0)
-			}
-
 		} else if apiAnnotationRE.MatchString(line) && p.currentBlock != nil {
 			p.apiAnnotation = line
 			if annotationContentRE.MatchString(line) {
