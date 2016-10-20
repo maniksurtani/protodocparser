@@ -90,6 +90,13 @@ func (p *ParsingContext) createNewCommentBlock(ln int) {
 	p.currentBlock.Type = impl.OtherComment
 }
 
+func (p *ParsingContext) reset() {
+	p.currentBlock = nil
+	p.apiAnnotation = ""
+	p.designDoc = ""
+	p.org = ""
+}
+
 func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) {
 	rpc := impl.NewRpc()
 	rpc.Name, rpc.Request, rpc.Response = rpcName(lines[currentLine])
@@ -228,9 +235,7 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 			// Mark block as a Service type.
 			p.currentBlock.Type = impl.ServiceComment
 			services = addServiceToServices(services, p, lines, ln)
-			p.currentBlock = nil
-			p.apiAnnotation = ""
-			p.designDoc = ""
+			p.reset()
 			currentExample := p.closeCurrentExample()
 			if currentExample != nil {
 				lastService := services[len(services)-1]
