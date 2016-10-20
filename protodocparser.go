@@ -255,28 +255,34 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 				continue
 			}
 		}
-		if startCommentRE.MatchString(line) && p.currentBlock == nil {
-			p.createNewCommentBlock(ln)
-		} else if endCommentRE.MatchString(line) && p.currentBlock != nil {
-			p.currentBlock.End = ln
-		} else if rpcRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
-			// Mark block as an RPC type.
-			p.currentBlock.Type = impl.RpcComment
-			addRpcToLastService(services, p, lines, ln)
-			p.reset()
-		} else if serviceRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
-			// Mark block as a Service type.
-			p.currentBlock.Type = impl.ServiceComment
-			services = addServiceToServices(services, p, lines, ln)
-			p.reset()
-		} else if apiAnnotationRE.MatchString(line) && p.currentBlock != nil {
-			p.parseApiAnnotation(line)
-		} else if exampleAnnoationRE.MatchString(line) && p.currentBlock != nil {
-			p.initializeNewExample(line)
-		} else if p.currentBlock != nil && p.currentExample != nil {
-			p.addLineToCurrentExample(line)
-		} else if p.currentBlock != nil && p.currentExample == nil {
-			p.addLineToDoc(line)
+		if p.currentBlock == nil {
+			if startCommentRE.MatchString(line) {
+				p.createNewCommentBlock(ln)
+			}
+		} else {
+			if endCommentRE.MatchString(line) {
+				p.currentBlock.End = ln
+			} else if rpcRE.MatchString(line) && p.currentBlock.End > 0 {
+				// Mark block as an RPC type.
+				p.currentBlock.Type = impl.RpcComment
+				addRpcToLastService(services, p, lines, ln)
+				p.reset()
+			} else if serviceRE.MatchString(line) && p.currentBlock.End > 0 {
+				// Mark block as a Service type.
+				p.currentBlock.Type = impl.ServiceComment
+				services = addServiceToServices(services, p, lines, ln)
+				p.reset()
+			} else if apiAnnotationRE.MatchString(line) {
+				p.parseApiAnnotation(line)
+			} else if exampleAnnoationRE.MatchString(line) {
+				p.initializeNewExample(line)
+			} else {
+				if p.currentExample != nil {
+					p.addLineToCurrentExample(line)
+				} else {
+					p.addLineToDoc(line)
+				}
+			}
 		}
 	}
 
