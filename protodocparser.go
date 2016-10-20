@@ -45,18 +45,19 @@ type ParsingContext struct {
 	designDoc              string
 	org                    string
 	examples               []*impl.Example
+	docLines               []string
 	currentExample         []string
 	currentExampleLanguage string
 }
 
 func NewParsingContext() *ParsingContext {
-	return &ParsingContext{examples: make([]*impl.Example, 0)}
+	return &ParsingContext{examples: make([]*impl.Example, 0), docLines: make([]string, 0)}
 }
 
 func (p *ParsingContext) closeCurrentExample() []string {
 	if p.currentExample != nil {
 		ret := p.currentExample
-		p.examples = append(p.examples, &impl.Example{Language: p.currentExampleLanguage, Code: strings.Join(p.currentExample, "\n")})
+		p.examples = append(p.examples, &impl.Example{Language: p.currentExampleLanguage, Code: joinLines(p.currentExample)})
 		p.currentExample = nil
 		p.currentExampleLanguage = ""
 		return ret
@@ -72,6 +73,10 @@ func (p *ParsingContext) initializeNewExample(line string) {
 
 func (p *ParsingContext) addLineToCurrentExample(line string) {
 	p.currentExample = append(p.currentExample, strings.Trim(line, "* "))
+}
+
+func (p *ParsingContext) addLineToDoc(line string) {
+	p.docLines = append(p.docLines, strings.Trim(line, "* "))
 }
 
 // ParseAsString parses proto manifests and returns a JSON string. Used externally also.
@@ -96,6 +101,7 @@ func (p *ParsingContext) reset() {
 	p.designDoc = ""
 	p.org = ""
 	p.examples = make([]*impl.Example, 0)
+	p.docLines = make([]string, 0)
 }
 
 func (p *ParsingContext) parseApiAnnotation(line string) {
@@ -118,9 +124,10 @@ func addRpcToLastService(services []*impl.Service, p *ParsingContext, lines []st
 	if currentExample != nil {
 		rpc.Examples = p.examples
 	}
-
-	// TODO: set Options, Doc and Examples
-	// TODO: Doc is the comment block before the first @Example annotation
+	if len(p.docLines) > 0 {
+		rpc.Doc = joinLines(p.docLines)
+	}
+	// TODO: set Options
 	// TODO: Options are the protobuf options. This might be harder to figure out since they may be split across multiple lines. :/
 
 	lastService := services[len(services)-1]
@@ -139,11 +146,13 @@ func addServiceToServices(services []*impl.Service, p *ParsingContext, lines []s
 	if currentExample != nil {
 		s.Examples = p.examples
 	}
+	if len(p.docLines) > 0 {
+		s.Doc = joinLines(p.docLines)
+	}
 
-	// TODO: set Doc, File, and Url
+	// TODO: set File, and Url
 	// TODO: if Org isn't set, attempt to "guess" what it might be by looking at the path/package of the proto, and look up in Registry
 	// TODO: Get File and Url - TODO, have these passed in as params
-	// TODO: Doc is the comment block after @API and before the first @Example annotation
 
 	return append(services, s)
 }
@@ -216,6 +225,10 @@ func strip(s string) string {
 	return strings.Trim(s, " ")
 }
 
+func joinLines(lines []string) string {
+	return strings.Join(lines, "\n")
+}
+
 // Can test from here rather than ParseAsString, since it makes testing easier
 func parse(protoFiles []*ProtoFile) []*impl.Service {
 	services := make([]*impl.Service, 0)
@@ -262,6 +275,8 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 			p.initializeNewExample(line)
 		} else if p.currentBlock != nil && p.currentExample != nil {
 			p.addLineToCurrentExample(line)
+		} else if p.currentBlock != nil && p.currentExample == nil {
+			p.addLineToDoc(line)
 		}
 	}
 
