@@ -123,9 +123,9 @@ func TestParseSimpleProto(t *testing.T) {
 		&impl.Example{Language: "java", Code: `String s = new String("Blah");`},
 		&impl.Example{Language: "go", Code: gocode},
 	)
+	rpc.Examples = append(rpc.Examples, &impl.Example{Language: "java", Code: `Future<Response> rsp = makeRequest();`})
 	s.Rpcs = append(s.Rpcs, rpc)
 	expectedServices = append(expectedServices, s)
-
 	if !reflect.DeepEqual(output, expectedServices) {
 		t.Errorf("Not the same: \n%+s\n%+s\n", asJson(output), asJson(expectedServices))
 	}
