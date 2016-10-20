@@ -13,16 +13,17 @@ import (
 
 // Regexps
 var (
-	startCommentRE      = regexp.MustCompile("^\\s*/\\*")
-	endCommentRE        = regexp.MustCompile("\\s*\\*/\\s*$")
-	rpcRE               = regexp.MustCompile("\\s*rpc\\s+")
-	serviceRE           = regexp.MustCompile("\\s*service\\s+")
-	serviceNameRE       = regexp.MustCompile("\\s*service\\s+(\\w+)\\s*\\{")
-	rpcNameRE           = regexp.MustCompile("\\s*rpc\\s+(\\w+)\\s*\\(\\s*([\\w]+)\\s*\\)\\s+returns\\s+\\(\\s*(\\w+)\\s*\\)")
-	pkgNameRE           = regexp.MustCompile("\\s*package\\s+([\\w.]+)\\s*;")
-	apiAnnotationRE     = regexp.MustCompile("^\\s*\\*\\s*@API")
-	exampleAnnoationRE  = regexp.MustCompile("^\\s*\\*\\s*@Example")
+	startCommentRE = regexp.MustCompile("^\\s*/\\*")
+	endCommentRE = regexp.MustCompile("\\s*\\*/\\s*$")
+	rpcRE = regexp.MustCompile("\\s*rpc\\s+")
+	serviceRE = regexp.MustCompile("\\s*service\\s+")
+	serviceNameRE = regexp.MustCompile("\\s*service\\s+(\\w+)\\s*\\{")
+	rpcNameRE = regexp.MustCompile("\\s*rpc\\s+(\\w+)\\s*\\(\\s*([\\w]+)\\s*\\)\\s+returns\\s+\\(\\s*(\\w+)\\s*\\)")
+	pkgNameRE = regexp.MustCompile("\\s*package\\s+([\\w.]+)\\s*;")
+	apiAnnotationRE = regexp.MustCompile("^\\s*\\*\\s*@API")
+	exampleAnnoationRE = regexp.MustCompile("^\\s*\\*\\s*@Example")
 	annotationContentRE = regexp.MustCompile("\\(([^\\)]+)\\)")
+	designDocRe = regexp.MustCompile("design\\s*=\\s*\"([^\"]+)\"")
 )
 
 type ProtoFile struct {
@@ -30,23 +31,24 @@ type ProtoFile struct {
 	ProtoFileSource io.Reader
 
 	// Metadata, purely for display in the output JSON
-	ProtoFilePath string
-	Url           string
-	Sha           string
+	ProtoFilePath   string
+	Url             string
+	Sha             string
 }
 
 type ParsingContext struct {
-	currentBlock *impl.CommentBlock
-	pkgName string
-	matched bool
-	apiAnnotation string
-	examples []*impl.Example
-	currentExample []string
+	currentBlock           *impl.CommentBlock
+	pkgName                string
+	matched                bool
+	apiAnnotation          string
+	designDoc              string
+	examples               []*impl.Example
+	currentExample         []string
 	currentExampleLanguage string
 }
 
 func NewParsingContext() *ParsingContext {
-	return &ParsingContext{ examples: make([]*impl.Example, 0)}
+	return &ParsingContext{examples: make([]*impl.Example, 0)}
 }
 
 func (p *ParsingContext) closeCurrentExample() []string {
@@ -66,7 +68,6 @@ func (p *ParsingContext) initializeNewExample(line string) {
 	p.currentExample = make([]string, 0)
 }
 
-
 func (p *ParsingContext) addLineToCurrentExample(line string) {
 	p.currentExample = append(p.currentExample, strings.Trim(line, "* "))
 }
@@ -81,6 +82,12 @@ func ParseAsString(protoFiles []*ProtoFile) string {
 	return string(bytes)
 }
 
+func (p *ParsingContext) createNewCommentBlock(ln int) {
+	p.currentBlock = &impl.CommentBlock{}
+	p.currentBlock.Start = ln
+	p.currentBlock.Type = impl.OtherComment
+}
+
 func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, currentLine int) {
 	rpc := impl.NewRpc()
 	rpc.Name, rpc.Request, rpc.Response = rpcName(lines[currentLine])
@@ -90,23 +97,24 @@ func addRpcToLastService(services []*impl.Service, commentBlock *impl.CommentBlo
 	// TODO: @Examples exists in the comment block
 	// TODO: Options are the protobuf options. This might be harder to figure out since they may be split across multiple lines. :/
 
-	lastService := services[len(services)-1]
+	lastService := services[len(services) - 1]
 	lastService.Rpcs = append(lastService.Rpcs, rpc)
 }
 
-func addServiceToServices(services []*impl.Service, commentBlock *impl.CommentBlock, lines []string, apiAnnotation string, currentLine int) []*impl.Service {
+func addServiceToServices(services []*impl.Service, p *ParsingContext, lines []string, currentLine int) []*impl.Service {
 	s := impl.NewService()
 	s.Name = serviceName(lines[currentLine])
-	if len(apiAnnotation) > 0 {
+	if len(p.apiAnnotation) > 0 {
 		s.Api = true
+		s.Design = p.designDoc
 	}
 
+
 	// TODO: set Api, Design, Doc, Examples, File, Org and Url
-	// TODO: to set Api, just check whether the @API annotation exists in the comment block
 	// TODO: to set Design and Org, look at the params passed in to @API
 	// TODO: if Org isn't set, attempt to "guess" what it might be by looking at the path/package of the proto, and look up in Registry
 	// TODO: @Examples exists in the comment block
-	// TODO: Get File and Url - TODO, have these passed in as command-line params
+	// TODO: Get File and Url - TODO, have these passed in as params
 	// TODO: Doc is the comment block after @API and before the first @Example annotation
 
 	return append(services, s)
@@ -160,6 +168,14 @@ func extractLanguageFromExample(line string) string {
 	return value
 }
 
+func extractDesignDoc(line string) string {
+	match := designDocRe.FindStringSubmatch(line)
+	if len(match) < 1 {
+		return ""
+	}
+	return match[1]
+}
+
 func strip(s string) string {
 	return strings.Trim(s, " ")
 }
@@ -192,10 +208,7 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 		}
 		fmt.Printf("Line %v is [%v]\n", ln, line)
 		if startCommentRE.MatchString(line) && p.currentBlock == nil {
-			// Create a new comment block.
-			p.currentBlock = &impl.CommentBlock{}
-			p.currentBlock.Start = ln
-			p.currentBlock.Type = impl.OtherComment
+			p.createNewCommentBlock(ln)
 		} else if endCommentRE.MatchString(line) && p.currentBlock != nil {
 			p.currentBlock.End = ln
 		} else if rpcRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
@@ -206,9 +219,10 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 		} else if serviceRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
 			// Mark block as a Service type.
 			p.currentBlock.Type = impl.ServiceComment
-			services = addServiceToServices(services, p.currentBlock, lines, p.apiAnnotation, ln)
+			services = addServiceToServices(services, p, lines, ln)
 			p.currentBlock = nil
 			p.apiAnnotation = ""
+			p.designDoc = ""
 			currentExample := p.closeCurrentExample()
 			if currentExample != nil {
 				lastService := services[len(services) - 1]
@@ -218,12 +232,15 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 
 		} else if apiAnnotationRE.MatchString(line) && p.currentBlock != nil {
 			p.apiAnnotation = line
-		} else if exampleAnnoationRE.MatchString(line)  && p.currentBlock != nil {
+			if annotationContentRE.MatchString(line) {
+				p.designDoc = extractDesignDoc(extractAnnotationContent(line))
+			}
+
+		} else if exampleAnnoationRE.MatchString(line) && p.currentBlock != nil {
 			p.initializeNewExample(line)
 		} else if p.currentBlock != nil && p.currentExample != nil {
 			p.addLineToCurrentExample(line)
-		} else
-		{
+		} else {
 			// Todo : remove this entire block
 			fmt.Printf("What?: %v\n", line)
 			fmt.Printf(">>>> p.currentBlock: %v\n\n", p.currentBlock)

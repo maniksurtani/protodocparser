@@ -19,10 +19,17 @@ func TestExtractAnnotation(t *testing.T) {
 }
 
 func TestExtractLanguageFromExample(t *testing.T) {
-	assertEqualStrings(extractLanguageFromExample("@Example(language=\"java\")"), "java", t)
-	assertEqualStrings(extractLanguageFromExample("@Example(language=\"go\")"), "go", t)
+	assertEqualStrings(extractLanguageFromExample(`@Example(language="java")`), "java", t)
+	assertEqualStrings(extractLanguageFromExample(`@Example(language="go")`), "go", t)
 	assertEqualStrings(extractLanguageFromExample("@Example(language   =   java)"), "java", t)
 	assertPanic(t, func() { extractLanguageFromExample("@Example(badparam=java)") })
+}
+
+
+func TestExtractDesignDoc(t *testing.T) {
+	assertEqualStrings(extractDesignDoc(`design="http://example.com/design.html"`), "http://example.com/design.html", t)
+	assertEqualStrings(extractDesignDoc(`design   =   "path"`), "path", t)
+	assertEqualStrings(extractDesignDoc("no design doc here"), "", t)
 }
 
 func TestStartComment(t *testing.T) {
@@ -100,6 +107,7 @@ func TestParseSimpleProto(t *testing.T) {
 	s.Package = "squareup.test.stuff"
 	s.Name = "MyService"
 	s.Api = true
+	s.Design = "http://example.com/design.html"
 	rpc := impl.NewRpc()
 	rpc.Name = "MyEndpoint"
 	rpc.Request = "Request"

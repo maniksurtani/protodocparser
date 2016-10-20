@@ -1,9 +1,8 @@
 package squareup.test.stuff;
 
 /**
- * @API(design="http://link.to.design.com/design.html", org="payments")
- * A service that does Blah. This is some documentation about this service. This service does some
- * stuff.
+ * @API(design="http://example.com/design.html", org="payments")
+ * The doc for this service
  *
  * @Example(language="java")
  * String s = new String("Blah");
@@ -13,10 +12,10 @@ package squareup.test.stuff;
  */
 service MyService {
   /**
-   * This method does some stuff, taking in a request and returning a response.
+   * The doc for MyEndpoint
    *
    * @Example(language="java")
-   * Future<Response> rsp = MyServiceClient.myEndpoint(Request.defaultInstance());
+   * Future<Response> rsp = makeRequest();
    */
   rpc MyEndpoint(Request) returns (Response);
 }
