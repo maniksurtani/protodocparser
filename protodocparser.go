@@ -150,7 +150,6 @@ func addServiceToServices(services []*impl.Service, p *ParsingContext, lines []s
 		s.Doc = joinLines(p.docLines)
 	}
 
-	// TODO: set File, and Url
 	// TODO: if Org isn't set, attempt to "guess" what it might be by looking at the path/package of the proto, and look up in Registry
 	// TODO: Get File and Url - TODO, have these passed in as params
 
@@ -229,7 +228,6 @@ func joinLines(lines []string) string {
 	return strings.Join(lines, "\n")
 }
 
-// Can test from here rather than ParseAsString, since it makes testing easier
 func parse(protoFiles []*ProtoFile) []*impl.Service {
 	services := make([]*impl.Service, 0)
 
@@ -239,10 +237,8 @@ func parse(protoFiles []*ProtoFile) []*impl.Service {
 			// TODO do something
 			panic(err)
 		}
-
 		services = parseLines(strings.Split(string(contents), "\n"), p, services)
 	}
-
 	return services
 }
 
@@ -285,11 +281,12 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 			}
 		}
 	}
-
 	// Add package names to services.
-	for _, svc := range services {
-		svc.Package = p.pkgName
+	for _, service := range services {
+		service.Package = p.pkgName
+		service.File = profoFile.ProtoFilePath
+		service.Url = profoFile.Url
+		service.Sha = profoFile.Sha
 	}
-
 	return services
 }
