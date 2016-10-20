@@ -32,8 +32,8 @@ func TestExtractAnnotation(t *testing.T) {
 }
 
 func TestExtractLanguageFromExample(t *testing.T) {
-	assertEqualStrings(extractLanguageFromExample("@Example(language=java)"), "java", t)
-	assertEqualStrings(extractLanguageFromExample("@Example(language=go)"), "go", t)
+	assertEqualStrings(extractLanguageFromExample("@Example(language=\"java\")"), "java", t)
+	assertEqualStrings(extractLanguageFromExample("@Example(language=\"go\")"), "go", t)
 	assertEqualStrings(extractLanguageFromExample("@Example(language   =   java)"), "java", t)
 	assertPanic(t, func() { extractLanguageFromExample("@Example(badparam=java)") })
 }
@@ -97,7 +97,7 @@ func TestServiceNames(t *testing.T) {
 	}
 }
 
-func xTestParseSimpleProto(t *testing.T) {
+func TestParseSimpleProto(t *testing.T) {
 	protoFile, _ := os.Open("./sample.proto")
 
 	pf := &ProtoFile{
@@ -117,8 +117,11 @@ func xTestParseSimpleProto(t *testing.T) {
 	rpc.Name = "MyEndpoint"
 	rpc.Request = "Request"
 	rpc.Response = "Response"
+	gocode := "conn := createRpcConnection()\nresponse, err := conn.MyEndpoint(&Request{})"
 	rpc.Examples = append(rpc.Examples,
-		&impl.Example{Language: "java", Code: `String s = new String("Blah");`})
+		&impl.Example{Language: "java", Code: `String s = new String("Blah");`},
+		&impl.Example{Language: "go", Code: gocode},
+	)
 	s.Rpcs = append(s.Rpcs, rpc)
 	expectedServices = append(expectedServices, s)
 

@@ -118,7 +118,7 @@ func extractAnnotationContent(line string) string {
 
 func extractLanguageFromExample(line string) string {
 	kv := strings.Split(extractAnnotationContent(line), "=")
-	key, value := strip(kv[0]), strip(kv[1])
+	key, value := strip(kv[0]), strings.Trim(strip(kv[1]), "\"")
 	if key != "language" {
 		log.Panicf("Not a valid @Example parameter: `%s`", key)
 	}
