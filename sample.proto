@@ -1,7 +1,7 @@
 package squareup.test.stuff;
 
 /**
- * @API(design="http://example.com/design.html", org="payments")
+ * @API(design="http://example.com/design.html", org="organization")
  * The doc for this service
  *
  * @Example(language="java")
