@@ -10,7 +10,6 @@ package squareup.test.stuff;
  * @Example(language="go")
  * conn := createRpcConnection()
  * response, err := conn.MyEndpoint(&Request{})
- *
  */
 service MyService {
   /**

@@ -118,7 +118,7 @@ func TestParseSimpleProto(t *testing.T) {
 	rpc.Request = "Request"
 	rpc.Response = "Response"
 	gocode := "conn := createRpcConnection()\nresponse, err := conn.MyEndpoint(&Request{})"
-	rpc.Examples = append(rpc.Examples,
+	s.Examples = append(s.Examples,
 		&impl.Example{Language: "java", Code: `String s = new String("Blah");`},
 		&impl.Example{Language: "go", Code: gocode},
 	)

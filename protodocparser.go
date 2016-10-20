@@ -151,6 +151,9 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 	pkgName := ""
 	matched := false
 	apiAnnotation := ""
+	examples := make([]*impl.Example, 0)
+	var currentExample []string = nil
+	currentExampleLanguage := ""
 
 	for ln, line := range lines {
 		if pkgName == "" {
@@ -176,11 +179,31 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 			// Mark block as a Service type.
 			currentBlock.Type = impl.ServiceComment
 			services = addServiceToServices(services, currentBlock, lines, apiAnnotation, ln)
+			lastService := services[len(services) - 1]
 			currentBlock = nil
 			apiAnnotation = ""
+			if currentExample != nil {
+				examples = append(examples, &impl.Example{Language: currentExampleLanguage, Code: strings.Join(currentExample, "\n")})
+				currentExample = nil
+				currentExampleLanguage = ""
+				lastService.Examples = examples
+				examples = make([]*impl.Example, 0)
+			}
+
 		} else if apiAnnotationRE.MatchString(line) && currentBlock != nil {
 			apiAnnotation = line
-		} else {
+		} else if exampleAnnoationRE.MatchString(line)  && currentBlock != nil {
+			if currentExample != nil {
+				examples = append(examples, &impl.Example{Language: currentExampleLanguage, Code: strings.Join(currentExample, "\n")})
+				currentExample = nil
+				currentExampleLanguage = ""
+			}
+			currentExampleLanguage = extractLanguageFromExample(line)
+			currentExample = make([]string, 0)
+		} else if currentBlock != nil && currentExample != nil {
+			currentExample = append(currentExample, strings.Trim(line, "* "))
+		} else
+		{
 			// Todo : remove this entire block
 			fmt.Printf("What?: %v\n", line)
 			fmt.Printf(">>>> currentBlock: %v\n\n", currentBlock)
