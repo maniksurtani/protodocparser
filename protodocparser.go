@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/maniksurtani/protodocparser/impl"
-	"log"
 )
 
 // Regexps
@@ -34,6 +33,42 @@ type ProtoFile struct {
 	ProtoFilePath string
 	Url           string
 	Sha           string
+}
+
+type ParsingContext struct {
+	currentBlock *impl.CommentBlock
+	pkgName string
+	matched bool
+	apiAnnotation string
+	examples []*impl.Example
+	currentExample []string
+	currentExampleLanguage string
+}
+
+func NewParsingContext() *ParsingContext {
+	return &ParsingContext{ examples: make([]*impl.Example, 0)}
+}
+
+func (p *ParsingContext) closeCurrentExample() []string {
+	if p.currentExample != nil {
+		ret := p.currentExample
+		p.examples = append(p.examples, &impl.Example{Language: p.currentExampleLanguage, Code: strings.Join(p.currentExample, "\n")})
+		p.currentExample = nil
+		p.currentExampleLanguage = ""
+		return ret
+	}
+	return nil
+}
+
+func (p *ParsingContext) initializeNewExample(line string) {
+	p.closeCurrentExample()
+	p.currentExampleLanguage = extractLanguageFromExample(line)
+	p.currentExample = make([]string, 0)
+}
+
+
+func (p *ParsingContext) addLineToCurrentExample(line string) {
+	p.currentExample = append(p.currentExample, strings.Trim(line, "* "))
 }
 
 // ParseAsString parses proto manifests and returns a JSON string. Used externally also.
@@ -120,7 +155,7 @@ func extractLanguageFromExample(line string) string {
 	kv := strings.Split(extractAnnotationContent(line), "=")
 	key, value := strip(kv[0]), strings.Trim(strip(kv[1]), "\"")
 	if key != "language" {
-		log.Panicf("Not a valid @Example parameter: `%s`", key)
+		panic(fmt.Sprintf("Not a valid @Example parameter: `%s`", key))
 	}
 	return value
 }
@@ -147,68 +182,53 @@ func parse(protoFiles []*ProtoFile) []*impl.Service {
 }
 
 func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) []*impl.Service {
-	var currentBlock *impl.CommentBlock
-	pkgName := ""
-	matched := false
-	apiAnnotation := ""
-	examples := make([]*impl.Example, 0)
-	var currentExample []string = nil
-	currentExampleLanguage := ""
-
+	p := NewParsingContext()
 	for ln, line := range lines {
-		if pkgName == "" {
-			pkgName, matched = matchPkgName(line)
-			if matched {
+		if p.pkgName == "" {
+			p.pkgName, p.matched = matchPkgName(line)
+			if p.matched {
 				continue
 			}
 		}
 		fmt.Printf("Line %v is [%v]\n", ln, line)
-		if startCommentRE.MatchString(line) && currentBlock == nil {
+		if startCommentRE.MatchString(line) && p.currentBlock == nil {
 			// Create a new comment block.
-			currentBlock = &impl.CommentBlock{}
-			currentBlock.Start = ln
-			currentBlock.Type = impl.OtherComment
-		} else if endCommentRE.MatchString(line) && currentBlock != nil {
-			currentBlock.End = ln
-		} else if rpcRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
+			p.currentBlock = &impl.CommentBlock{}
+			p.currentBlock.Start = ln
+			p.currentBlock.Type = impl.OtherComment
+		} else if endCommentRE.MatchString(line) && p.currentBlock != nil {
+			p.currentBlock.End = ln
+		} else if rpcRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
 			// Mark block as an RPC type.
-			currentBlock.Type = impl.RpcComment
-			addRpcToLastService(services, currentBlock, lines, ln)
-			currentBlock = nil
-		} else if serviceRE.MatchString(line) && currentBlock != nil && currentBlock.End > 0 {
+			p.currentBlock.Type = impl.RpcComment
+			addRpcToLastService(services, p.currentBlock, lines, ln)
+			p.currentBlock = nil
+		} else if serviceRE.MatchString(line) && p.currentBlock != nil && p.currentBlock.End > 0 {
 			// Mark block as a Service type.
-			currentBlock.Type = impl.ServiceComment
-			services = addServiceToServices(services, currentBlock, lines, apiAnnotation, ln)
-			lastService := services[len(services) - 1]
-			currentBlock = nil
-			apiAnnotation = ""
+			p.currentBlock.Type = impl.ServiceComment
+			services = addServiceToServices(services, p.currentBlock, lines, p.apiAnnotation, ln)
+			p.currentBlock = nil
+			p.apiAnnotation = ""
+			currentExample := p.closeCurrentExample()
 			if currentExample != nil {
-				examples = append(examples, &impl.Example{Language: currentExampleLanguage, Code: strings.Join(currentExample, "\n")})
-				currentExample = nil
-				currentExampleLanguage = ""
-				lastService.Examples = examples
-				examples = make([]*impl.Example, 0)
+				lastService := services[len(services) - 1]
+				lastService.Examples = p.examples
+				p.examples = make([]*impl.Example, 0)
 			}
 
-		} else if apiAnnotationRE.MatchString(line) && currentBlock != nil {
-			apiAnnotation = line
-		} else if exampleAnnoationRE.MatchString(line)  && currentBlock != nil {
-			if currentExample != nil {
-				examples = append(examples, &impl.Example{Language: currentExampleLanguage, Code: strings.Join(currentExample, "\n")})
-				currentExample = nil
-				currentExampleLanguage = ""
-			}
-			currentExampleLanguage = extractLanguageFromExample(line)
-			currentExample = make([]string, 0)
-		} else if currentBlock != nil && currentExample != nil {
-			currentExample = append(currentExample, strings.Trim(line, "* "))
+		} else if apiAnnotationRE.MatchString(line) && p.currentBlock != nil {
+			p.apiAnnotation = line
+		} else if exampleAnnoationRE.MatchString(line)  && p.currentBlock != nil {
+			p.initializeNewExample(line)
+		} else if p.currentBlock != nil && p.currentExample != nil {
+			p.addLineToCurrentExample(line)
 		} else
 		{
 			// Todo : remove this entire block
 			fmt.Printf("What?: %v\n", line)
-			fmt.Printf(">>>> currentBlock: %v\n\n", currentBlock)
-			if currentBlock != nil {
-				fmt.Printf(">>>> currentBlock.End: %v\n\n", currentBlock.End)
+			fmt.Printf(">>>> p.currentBlock: %v\n\n", p.currentBlock)
+			if p.currentBlock != nil {
+				fmt.Printf(">>>> p.currentBlock.End: %v\n\n", p.currentBlock.End)
 			}
 			fmt.Printf(">>>> len(services): %d\n\n", len(services))
 		}
@@ -216,7 +236,7 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 
 	// Add package names to services.
 	for _, svc := range services {
-		svc.Package = pkgName
+		svc.Package = p.pkgName
 	}
 
 	return services
