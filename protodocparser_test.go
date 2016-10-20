@@ -13,19 +13,6 @@ import (
 	"strings"
 )
 
-var pr = fmt.Println
-func TestGolang(t *testing.T) {
-	rp := regexp.MustCompile("a(.+)")
-	str := rp.FindStringSubmatch("abc") // ["abc", "a", "b"]
-	pr("one plus one")
-	pr(str)
-	pr("%+V\n", str)
-	pr(str[1])
-
-	//fmt.Println(str[2])
-	//fmt.Println(str[0][1])
-}
-
 func TestExtractAnnotation(t *testing.T) {
 	assertEqualStrings(extractAnnotationContent("@API(   content here  )"), "content here", t)
 	assertPanic(t, func() { extractAnnotationContent("no content here. it will panic") })
