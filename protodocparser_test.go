@@ -131,9 +131,27 @@ func TestParseSimpleProto(t *testing.T) {
 	rpc.Examples = append(rpc.Examples, &impl.Example{Language: "java", Code: `Future<Response> rsp = makeRequest();`})
 	s.Rpcs = append(s.Rpcs, rpc)
 	expectedServices = append(expectedServices, s)
-	if !reflect.DeepEqual(output, expectedServices) {
-		t.Errorf("Not the same: \n%+s\n%+s\n", asJson(output), asJson(expectedServices))
-	}
+	assertDeepEquals(output, expectedServices, t)
+}
+
+func TestParseBareProto(t *testing.T) {
+	protoFile, _ := os.Open("./sample_bare.proto")
+
+	pf := &ProtoFile{ ProtoFileSource: protoFile}
+	output := parse([]*ProtoFile{pf})
+
+	expectedServices := make([]*impl.Service, 0)
+	s := impl.NewService()
+	s.Package = "squareup.test.stuff"
+	s.Name = "MyService"
+	s.Api = false
+	rpc := impl.NewRpc()
+	rpc.Name = "MyEndpoint"
+	rpc.Request = "Request"
+	rpc.Response = "Response"
+	s.Rpcs = append(s.Rpcs, rpc)
+	expectedServices = append(expectedServices, s)
+	assertDeepEquals(output, expectedServices, t)
 }
 
 func asJson(v interface{}) string {
@@ -164,6 +182,13 @@ func assertEqualStrings(input string, expected string, t *testing.T) {
 	if input != expected {
 		printRelevantStacktrace()
 		t.Errorf("\nExpected: `%s`\n but got: `%s`", expected, input)
+	}
+}
+
+func assertDeepEquals(input interface{}, expected interface{}, t *testing.T) {
+	if !reflect.DeepEqual(input, expected) {
+		printRelevantStacktrace()
+		t.Errorf("Not the same: Expected:\n%+s\n  but got:\n%+s\n", asJson(expected), asJson(input))
 	}
 }
 

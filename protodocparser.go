@@ -130,8 +130,13 @@ func addRpcToLastService(services []*impl.Service, p *ParsingContext, lines []st
 	// TODO: set Options
 	// TODO: Options are the protobuf options. This might be harder to figure out since they may be split across multiple lines. :/
 
-	lastService := services[len(services)-1]
-	lastService.Rpcs = append(lastService.Rpcs, rpc)
+	if len(services) > 0 {
+		lastService := services[len(services) - 1]
+		if lastService != nil {
+			lastService.Rpcs = append(lastService.Rpcs, rpc)
+			p.reset()
+		}
+	}
 }
 
 func addServiceToServices(services []*impl.Service, p *ParsingContext, lines []string, currentLine int) []*impl.Service {
@@ -152,7 +157,7 @@ func addServiceToServices(services []*impl.Service, p *ParsingContext, lines []s
 
 	// TODO: if Org isn't set, attempt to "guess" what it might be by looking at the path/package of the proto, and look up in Registry
 	// TODO: Get File and Url - TODO, have these passed in as params
-
+	p.reset()
 	return append(services, s)
 }
 
@@ -254,6 +259,11 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 		if p.currentBlock == nil {
 			if startCommentRE.MatchString(line) {
 				p.createNewCommentBlock(ln)
+			} else if serviceRE.MatchString(line) {
+				services = addServiceToServices(services, p, lines, ln)
+			} else if rpcRE.MatchString(line) {
+				addRpcToLastService(services, p, lines, ln)
+			} else {
 			}
 		} else {
 			if endCommentRE.MatchString(line) {
@@ -262,12 +272,10 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 				// Mark block as an RPC type.
 				p.currentBlock.Type = impl.RpcComment
 				addRpcToLastService(services, p, lines, ln)
-				p.reset()
 			} else if serviceRE.MatchString(line) && p.currentBlock.End > 0 {
 				// Mark block as a Service type.
 				p.currentBlock.Type = impl.ServiceComment
 				services = addServiceToServices(services, p, lines, ln)
-				p.reset()
 			} else if apiAnnotationRE.MatchString(line) {
 				p.parseApiAnnotation(line)
 			} else if exampleAnnoationRE.MatchString(line) {
