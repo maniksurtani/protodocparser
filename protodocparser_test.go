@@ -45,6 +45,11 @@ func TestStartComment(t *testing.T) {
 	assertFalse(startCommentRE.MatchString("this is not a comment /**"), t)
 }
 
+func TestSingleLineComment(t *testing.T) {
+	assertTrue(isSingleLineComment("/* a single line comment */"), t)
+	assertTrue(isSingleLineComment("              /* a single line comment */                  "), t)
+}
+
 func TestEndComment(t *testing.T) {
 	assertTrue(endCommentRE.MatchString("*/"), t)
 	assertTrue(endCommentRE.MatchString("*/    "), t)

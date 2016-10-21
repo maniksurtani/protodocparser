@@ -10,7 +10,17 @@ package squareup.test.stuff;
  * conn := createRpcConnection()
  * response, err := conn.MyEndpoint(&Request{})
  */
+
 service MyService {
+  /* MyService will normally respond in under 100 ms */
+  option (squareup.sake.retry_timeout_millis) = 500;
+
+  /**
+    THIS IS NOT A COMMENT FOR THE RPC
+    THIS IS NOT A COMMENT FOR THE RPC
+    THIS IS NOT A COMMENT FOR THE RPC
+  */
+
   /**
    * The doc for MyEndpoint
    *
