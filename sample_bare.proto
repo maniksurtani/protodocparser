@@ -1,0 +1,5 @@
+package squareup.test.stuff;
+
+service MyService {
+  rpc MyEndpoint(Request) returns (Response);
+}
