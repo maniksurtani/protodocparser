@@ -25,6 +25,7 @@ var (
 	annotationContentRE = regexp.MustCompile("\\(([^\\)]+)\\)")
 	designDocRE         = regexp.MustCompile("design\\s*=\\s*\"([^\"]+)\"")
 	orgRE               = regexp.MustCompile("org\\s*=\\s*\"([^\"]+)\"")
+	allWhiteSpaceRE     = regexp.MustCompile("^\\s*$")
 )
 
 type ProtoFile struct {
@@ -90,6 +91,7 @@ func ParseAsString(protoFiles []*ProtoFile) string {
 }
 
 func (p *ParsingContext) createNewCommentBlock(ln int) {
+	p.reset()
 	p.currentBlock = &impl.CommentBlock{}
 	p.currentBlock.Start = ln
 	p.currentBlock.Type = impl.OtherComment
@@ -247,9 +249,16 @@ func parse(protoFiles []*ProtoFile) []*impl.Service {
 	return services
 }
 
+func isSingleLineComment(line string) bool {
+	return startCommentRE.MatchString(line) && endCommentRE.MatchString(line)
+}
+
 func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) []*impl.Service {
 	p := NewParsingContext()
 	for ln, line := range lines {
+		if isSingleLineComment(line) || allWhiteSpaceRE.MatchString(line) {
+			continue
+		}
 		if p.pkgName == "" {
 			p.pkgName, p.matched = matchPkgName(line)
 			if p.matched {
@@ -266,7 +275,9 @@ func parseLines(lines []string, profoFile *ProtoFile, services []*impl.Service) 
 			} else {
 			}
 		} else {
-			if endCommentRE.MatchString(line) {
+			if startCommentRE.MatchString(line) {
+				p.createNewCommentBlock(ln)
+			} else if endCommentRE.MatchString(line) {
 				p.currentBlock.End = ln
 			} else if rpcRE.MatchString(line) && p.currentBlock.End > 0 {
 				// Mark block as an RPC type.
