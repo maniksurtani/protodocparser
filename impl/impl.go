@@ -25,6 +25,7 @@ type Rpc struct {
 type Service struct {
 	Url      string     `json:"url,omitempty"`
 	File     string     `json:"file,omitempty"`
+	Sha      string     `json:"sha,omitempty"`
 	Package  string     `json:"package,omitempty"`
 	Name     string     `json:"name,omitempty"`
 	Org      string     `json:"org,omitempty"`

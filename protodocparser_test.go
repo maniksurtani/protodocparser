@@ -114,18 +114,20 @@ func TestParseSimpleProto(t *testing.T) {
 	s.Api = true
 	s.Design = "http://example.com/design.html"
 	s.Org = "organization"
+	s.Doc = "The doc for this service\nThe second line of the doc"
 	rpc := impl.NewRpc()
 	rpc.Name = "MyEndpoint"
 	rpc.Request = "Request"
 	rpc.Response = "Response"
+	rpc.Doc = "The doc for MyEndpoint\n"
 	gocode := "conn := createRpcConnection()\nresponse, err := conn.MyEndpoint(&Request{})"
 	s.Examples = append(s.Examples,
 		&impl.Example{Language: "java", Code: `String s = new String("Blah");`},
 		&impl.Example{Language: "go", Code: gocode},
 	)
+	rpc.Examples = append(rpc.Examples, &impl.Example{Language: "java", Code: `Future<Response> rsp = makeRequest();`})
 	s.Rpcs = append(s.Rpcs, rpc)
 	expectedServices = append(expectedServices, s)
-
 	if !reflect.DeepEqual(output, expectedServices) {
 		t.Errorf("Not the same: \n%+s\n%+s\n", asJson(output), asJson(expectedServices))
 	}

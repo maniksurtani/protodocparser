@@ -3,7 +3,7 @@ package squareup.test.stuff;
 /**
  * @API(design="http://example.com/design.html", org="organization")
  * The doc for this service
- *
+ * The second line of the doc
  * @Example(language="java")
  * String s = new String("Blah");
  * @Example(language="go")
