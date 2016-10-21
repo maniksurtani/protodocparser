@@ -115,6 +115,9 @@ func TestParseSimpleProto(t *testing.T) {
 	s.Design = "http://example.com/design.html"
 	s.Org = "organization"
 	s.Doc = "The doc for this service\nThe second line of the doc"
+	s.Url = "http://some.repo/sample.proto"
+	s.File = "./sample.proto"
+	s.Sha = "ABCD1234"
 	rpc := impl.NewRpc()
 	rpc.Name = "MyEndpoint"
 	rpc.Request = "Request"
